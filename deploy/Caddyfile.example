@@ -1,0 +1,37 @@
+# 配置示意：必须使用包含 github.com/caddyserver/forwardproxy 的固定 Caddy 构建。
+# 此文件是内存渲染结果的示意；不要替换成真实密码后作为明文配置落盘。
+# 生产启动使用 Caddyfile.bootstrap.example，Node 内存生成受管 JSON 再经 Admin API 加载。
+# 此模板未在目标 Caddy 二进制执行 validate。
+# 手动证书须覆盖客户端使用的代理域名和管理域名。
+{
+    admin 127.0.0.1:2019
+    persist_config off
+    order forward_proxy before reverse_proxy
+    servers {
+        protocols h1 h2 h3
+    }
+}
+
+# 正向代理：客户端以证书域名连接本机 443；请求的目标 authority 可为任意允许目的地。
+:443 {
+    tls C:/ProgramData/NetworkProxy/tls/fullchain.pem C:/ProgramData/NetworkProxy/tls/privkey.pem
+
+    forward_proxy {
+        basic_auth REPLACE_OWNER REPLACE_WITH_STRONG_PROXY_PASSWORD
+        # 只允许 loopback、无 URL 凭据，Node 将此入口映射到 edge-owner。
+        upstream socks5://127.0.0.1:11080
+        hide_ip
+        hide_via
+    }
+
+    respond "Not Found" 404
+}
+
+# 管理网站与 Clash API 使用独立端口；应用仍执行 Cookie/Bearer/WS 鉴权。
+https://admin.example.com:9443 {
+    tls C:/ProgramData/NetworkProxy/tls/fullchain.pem C:/ProgramData/NetworkProxy/tls/privkey.pem
+
+    reverse_proxy 127.0.0.1:19090 {
+        flush_interval -1
+    }
+}

@@ -1,0 +1,21 @@
+# 无代理权限的启动配置；Node 就绪后通过本机 Admin API 应用内存生成的受管 JSON。
+# 替换域名与证书路径；需要包含 forwardproxy 的锁定构建用于之后的受管配置。
+{
+    admin 127.0.0.1:2019
+    persist_config off
+    servers {
+        protocols h1 h2 h3
+    }
+}
+
+:443 {
+    tls C:/ProgramData/NetworkProxy/tls/fullchain.pem C:/ProgramData/NetworkProxy/tls/privkey.pem
+    respond "Proxy is starting" 503
+}
+
+https://admin.example.com:9443 {
+    tls C:/ProgramData/NetworkProxy/tls/fullchain.pem C:/ProgramData/NetworkProxy/tls/privkey.pem
+    reverse_proxy 127.0.0.1:19090 {
+        flush_interval -1
+    }
+}
